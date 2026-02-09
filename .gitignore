@@ -1,0 +1,27 @@
+# Python specific ignores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python/
+env/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Editor/IDE ignores
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS-specific ignores
+.DS_Store
+Thumbs.db
+
+# Log and temporary files
+*.log
+*.tmp
+test_wordlist.txt
+test_wordlist_for_tests.txt
+test_wordlist_hybrid.txt

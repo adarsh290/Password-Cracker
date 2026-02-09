@@ -1,0 +1,6 @@
+apple
+banana
+password
+123456
+qwerty
+gemini
