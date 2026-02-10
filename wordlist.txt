@@ -1,6 +1,14 @@
-apple
-banana
 password
 123456
 qwerty
-gemini
+admin
+12345
+welcome
+testpassword
+clue
+protected
+secret
+access
+confidential
+mypassword
+000000

@@ -16,7 +16,7 @@ Here's why your stated intention aligns with legitimate educational goals:
 
 *   **Understanding Attack Vectors:** Implementing hybrid dictionary and brute-force attacks provides direct, practical insight into how adversaries attempt to gain unauthorized access. This knowledge is crucial for understanding the importance of strong, unique passwords and robust security policies.
 *   **Exploring Hashing Mechanisms:** Investigating MD5, SHA-256, and bcrypt is fundamental to comprehending data security. It teaches the principles of cryptographic hashing, the differences between one-way functions, and why modern, adaptive hashes like bcrypt are superior for password storage compared to outdated ones like MD5. This understanding is vital for secure system design.
-*   **Programming and Scripting Skills:** Developing such a tool in Python with a terminal-based interface hones valuable programming skills, including file I/O, algorithm implementation, and command-line interaction, all of which are transferable to many areas of software development and security.
+*   **Programming and Scripting Skills:** Developing such a tool in Python with a terminal-based interface hones valuable programming skills, including file I/O, algorithm implementation, and command-line interaction, all of which of which are transferable to many areas of software development and security.
 *   **Defensive Security Principles:** By actively building and experimenting with these attack methods, one can better appreciate the defensive measures required to protect against them. It fosters an attacker's mindset, which is essential for effective penetration testing and security auditing.
 
 The focus on *how* passwords are attacked and *how* hashing works is key to its educational value, providing a deeper appreciation for secure password practices and system vulnerabilities.
@@ -61,17 +61,17 @@ The model then proceeded to implement the password cracking tool step-by-step ac
     *   Updated `bruteforce_utils.py` to correctly handle bcrypt hashes in `bruteforce_crack`, including adjusting test cases to prevent timeouts.
     *   Updated `dictionary_utils.py` to correctly handle bcrypt hashes in `dictionary_crack`.
     *   Updated `cracker.py` to include bcrypt test cases in `crack_password_hybrid`.
-8.  **Designing and implementing a terminal-based user interface:**
-    *   Created `cli_cracker.py` using `argparse`.
-    *   Fixed `SyntaxError`s in `cli_cracker.py`.
-    *   Tested hash generation and MD5 brute-force cracking via CLI.
-    *   Addressed shell parsing issues with bcrypt hashes by implementing a `--test_bcrypt_scenario` in `cli_cracker.py` to bypass direct argument passing for complex hashes.
-    *   Successfully ran the dedicated bcrypt test scenario.
-9.  **Creating comprehensive test cases:**
+    *   **Designing and implementing a terminal-based user interface:**
+        *   Created `cli_cracker.py` using `argparse`.
+        *   Fixed `SyntaxError`s in `cli_cracker.py`.
+        *   Tested hash generation and MD5 brute-force cracking via CLI.
+        *   Addressed shell parsing issues with bcrypt hashes by implementing a `--test_bcrypt_scenario` in `cli_cracker.py` to bypass direct argument passing for complex hashes.
+        *   Successfully ran the dedicated bcrypt test scenario.
+8.  **Creating comprehensive test cases:**
     *   Created `test_cracker.py` using Python's `unittest` framework to verify all components.
     *   Fixed a `SyntaxError` in `setUpClass` related to wordlist generation.
     *   Resolved multiple `AssertionError`s in dictionary and hybrid cracking tests by identifying and fixing a critical bug in how the wordlist was being written and read in the test environment (the `f.write` was writing `
-` literally instead of actual newlines).
+` literally instead of newlines).
     *   Successfully ran all 10 unit tests, with all passing.
 
 ## Conversation Continuation (User's current prompt)
@@ -81,3 +81,25 @@ The model then proceeded to implement the password cracking tool step-by-step ac
 **Model:** (Provided a detailed `summary.md` covering these points, which was then displayed to the user).
 
 **User:** add a file named GEMINI.md and add the context of this chat
+--- End of Context from: GEMINI.md ---
+
+The PDF cracking functionality, including dictionary, brute-force (now parallelized with periodic progress updates), and hybrid methods, has been fully implemented, integrated into the CLI tool, and tested. The performance statistics for brute-force are also included.
+
+Here are the updated instructions on how to use it:
+
+**To crack a PDF using a dictionary attack:**
+```bash
+python cli_cracker.py --pdf_file <path_to_pdf> --pdf_attack_type dictionary --pdf_wordlist <path_to_wordlist>
+```
+
+**To crack a PDF using a brute-force attack:**
+```bash
+python cli_cracker.py --pdf_file <path_to_pdf> --pdf_attack_type bruteforce --pdf_charset <charset> --pdf_min_len <min_length> --pdf_max_len <max_length>
+```
+**To crack a PDF using a hybrid attack (dictionary then brute-force):**
+```bash
+python cli_cracker.py --pdf_file <path_to_pdf> --pdf_attack_type hybrid --pdf_wordlist <path_to_wordlist> --pdf_charset <charset> --pdf_min_len <min_length> --pdf_max_len <max_length>
+```
+For `<charset>`, you can use predefined options like `lower`, `upper`, `digits`, `special`, `all`, or provide a custom string of characters (e.g., `abc`).
+
+The brute-force method now utilizes multiprocessing to leverage multiple CPU cores, which should significantly improve its speed. It also reports the number of passwords attempted and the passwords per second with periodic updates during the process.

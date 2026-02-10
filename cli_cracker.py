@@ -5,7 +5,7 @@ import string
 import os
 
 from hashing_utils import hash_md5, hash_sha256, hash_bcrypt
-from cracker import crack_password_hybrid
+import pdf_cracker # Add this import
 
 def run_bcrypt_test_scenario(target_hash_val, wordlist_path_val):
     """
@@ -57,6 +57,18 @@ def main():
     # Argument to run the bcrypt test scenario
     parser.add_argument("--test_bcrypt_scenario", action="store_true", help="Run a hardcoded bcrypt test scenario.")
 
+    # Arguments for PDF cracking
+    parser.add_argument("--pdf_file", help="Path to the password-protected PDF file.")
+    parser.add_argument("--pdf_attack_type", choices=['dictionary', 'bruteforce', 'hybrid'],
+                        help="Type of attack for PDF cracking (dictionary, bruteforce, hybrid).")
+    parser.add_argument("--pdf_wordlist", help="Path to a wordlist file for PDF dictionary attack.")
+    parser.add_argument("--pdf_charset", default="lower",
+                        help="Character set for PDF brute-force attack (e.g., 'lower', 'upper', 'digits', 'special', 'all', or a custom string of characters).")
+    parser.add_argument("--pdf_min_len", type=int, default=1,
+                        help="Minimum length for PDF brute-force attack.")
+    parser.add_argument("--pdf_max_len", type=int, default=4,
+                        help="Maximum length for PDF brute-force attack.")
+
     args = parser.parse_args()
 
     # Handle hash generation request
@@ -92,7 +104,52 @@ gemini
         os.remove(wordlist_path) # Clean up
         return
 
-    # If no generate_hash or test_bcrypt_scenario, then cracking
+    # --- Start of PDF Cracking Logic ---
+    if args.pdf_file:
+        if not args.pdf_attack_type:
+            parser.error("--pdf_attack_type is required when --pdf_file is specified.")
+        
+        pdf_cracked_password = None
+        # Determine PDF character set for brute-force
+        pdf_chosen_charset = ""
+        if args.pdf_charset == 'lower':
+            pdf_chosen_charset = string.ascii_lowercase
+        elif args.pdf_charset == 'upper':
+            pdf_chosen_charset = string.ascii_uppercase
+        elif args.pdf_charset == 'digits':
+            pdf_chosen_charset = string.digits
+        elif args.pdf_charset == 'special':
+            pdf_chosen_charset = string.punctuation
+        elif args.pdf_charset == 'all':
+            pdf_chosen_charset = string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation
+        else: # Custom charset provided
+            pdf_chosen_charset = args.pdf_charset
+
+        if args.pdf_attack_type == 'dictionary':
+            if not args.pdf_wordlist:
+                parser.error("--pdf_wordlist is required for PDF dictionary attack.")
+            pdf_cracked_password = pdf_cracker.crack_pdf_dictionary(
+                args.pdf_file, args.pdf_wordlist
+            )
+        elif args.pdf_attack_type == 'bruteforce':
+            pdf_cracked_password = pdf_cracker.crack_pdf_bruteforce(
+                args.pdf_file, pdf_chosen_charset, args.pdf_min_len, args.pdf_max_len
+            )
+        elif args.pdf_attack_type == 'hybrid':
+            if not args.pdf_wordlist:
+                parser.error("--pdf_wordlist is required for PDF hybrid attack.")
+            pdf_cracked_password = pdf_cracker.crack_pdf_hybrid(
+                args.pdf_file, args.pdf_wordlist, pdf_chosen_charset, args.pdf_min_len, args.pdf_max_len
+            )
+        
+        if pdf_cracked_password:
+            print(f"\nPDF Password cracked! Found: '{pdf_cracked_password}'")
+        else:
+            print("\nCould not crack the PDF password.")
+        return
+    # --- End of PDF Cracking Logic ---
+
+    # If no generate_hash, test_bcrypt_scenario, or pdf_file, then proceed with hash cracking
     if not args.target_hash or not args.hash_type:
         parser.error("target_hash and hash_type are required for cracking operations.")
 
