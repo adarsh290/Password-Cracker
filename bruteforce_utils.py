@@ -2,8 +2,11 @@
 
 import itertools
 import string
-import hashlib # Import hashlib for hashing algorithms if needed directly
-from hashing_utils import hash_md5, hash_sha256, hash_bcrypt, verify_bcrypt # Import bcrypt functions
+import hashlib
+import os
+import time
+import multiprocessing
+from hashing_utils import hash_md5, hash_sha256, hash_bcrypt, verify_bcrypt
 
 def generate_candidates(charset, min_length, max_length):
     """
@@ -13,9 +16,42 @@ def generate_candidates(charset, min_length, max_length):
         for candidate_tuple in itertools.product(charset, repeat=length):
             yield "".join(candidate_tuple)
 
+def _worker_bruteforce(target_hash, hash_type, task_queue, result_queue, found_event, attempts):
+    """
+    Worker function for multiprocessing brute-force.
+    """
+    while not found_event.is_set():
+        try:
+            password_candidate = task_queue.get(timeout=1)
+            if password_candidate is None: # Sentinel value to stop worker
+                break
+            
+            with attempts.get_lock(): # Safely increment shared counter
+                attempts.value += 1
+
+            if hash_type == 'bcrypt':
+                if verify_bcrypt(password_candidate, target_hash):
+                    result_queue.put(password_candidate)
+                    found_event.set()
+                    break
+            elif hash_type == 'md5':
+                if hash_md5(password_candidate) == target_hash:
+                    result_queue.put(password_candidate)
+                    found_event.set()
+                    break
+            elif hash_type == 'sha256':
+                if hash_sha256(password_candidate) == target_hash:
+                    result_queue.put(password_candidate)
+                    found_event.set()
+                    break
+        except Exception:
+            # Using a broad exception here to prevent worker death, 
+            # but in a production environment, specific errors should be handled.
+            continue
+
 def bruteforce_crack(target_hash, hash_type, charset, min_length, max_length):
     """
-    Attempts to crack a hash using a brute-force approach.
+    Attempts to crack a hash using a multi-processed brute-force approach.
     :param target_hash: The hash to crack.
     :param hash_type: 'md5', 'sha256', or 'bcrypt'.
     :param charset: The character set to use for generating candidates.
@@ -23,29 +59,92 @@ def bruteforce_crack(target_hash, hash_type, charset, min_length, max_length):
     :param max_length: Maximum length of passwords to try.
     :return: The cracked password if found, otherwise None.
     """
-    print(f"Starting brute-force attack for hash: {target_hash} ({hash_type})")
+    print(f"Starting multi-core brute-force attack for hash: {target_hash} ({hash_type})")
     print(f"Character set: {charset}, Length: {min_length}-{max_length}")
 
     if hash_type not in ['md5', 'sha256', 'bcrypt']:
         print(f"Error: Unsupported hash type '{hash_type}'.")
         return None
 
-    for candidate in generate_candidates(charset, min_length, max_length):
-        if hash_type == 'bcrypt':
-            if verify_bcrypt(candidate, target_hash):
-                print(f"Crack successful! Password found: '{candidate}'")
-                return candidate
-        else: # For md5 and sha256
-            if hash_type == 'md5':
-                current_hash = hash_md5(candidate)
-            elif hash_type == 'sha256':
-                current_hash = hash_sha256(candidate)
+    start_time = time.time()
+    attempts = multiprocessing.Value('L', 0)
+    task_queue = multiprocessing.Queue(maxsize=1000) # Limit queue size to prevent memory bloat
+    result_queue = multiprocessing.Queue()
+    found_event = multiprocessing.Event()
+
+    num_processes = os.cpu_count() or 1
+    processes = []
+
+    # Start worker processes
+    for _ in range(num_processes):
+        p = multiprocessing.Process(target=_worker_bruteforce, 
+                                    args=(target_hash, hash_type, task_queue, result_queue, found_event, attempts))
+        processes.append(p)
+        p.start()
+
+    # Populate task queue
+    candidate_generator = generate_candidates(charset, min_length, max_length)
+    last_report_time = time.time()
+
+    try:
+        for candidate in candidate_generator:
+            if found_event.is_set():
+                break
             
-            if current_hash == target_hash:
-                print(f"Crack successful! Password found: '{candidate}'")
-                return candidate
-                
+            # Put candidate in queue, wait if full
+            task_queue.put(candidate)
+
+            # Periodic reporting
+            current_time = time.time()
+            if current_time - last_report_time > 2: # Report every 2 seconds
+                elapsed_time = current_time - start_time
+                current_attempts = attempts.value
+                pps = current_attempts / elapsed_time if elapsed_time > 0 else 0
+                print(f"Progress: {current_attempts} attempts - {pps:.2f} passwords/sec")
+                last_report_time = current_time
+    except StopIteration:
+        pass
+
+    # Send stop signal to workers
+    for _ in range(num_processes):
+        try:
+            task_queue.put(None) # Use blocking put for stop signals
+        except Exception:
+            pass
+
+    cracked_password = None
+    # Wait for results or all processes to finish
+    while any(p.is_alive() for p in processes) or not result_queue.empty():
+        if found_event.is_set():
+            try:
+                cracked_password = result_queue.get(timeout=1)
+            except multiprocessing.queues.Empty:
+                pass
+            break
+        
+        # Check if they all finished without finding it
+        if all(not p.is_alive() for p in processes) and task_queue.empty() and result_queue.empty():
+            break
+        time.sleep(0.1)
+
+    # Clean up processes
+    for p in processes:
+        if p.is_alive():
+            p.terminate()
+        p.join()
+
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    total_attempts = attempts.value
+    pps = total_attempts / elapsed_time if elapsed_time > 0 else 0
+
+    if cracked_password:
+        print(f"Crack successful! Password found: '{cracked_password}'")
+        print(f"Statistics: {total_attempts} attempts in {elapsed_time:.2f}s ({pps:.2f} p/s)")
+        return cracked_password
+    
     print("Brute-force attack completed. Password not found.")
+    print(f"Statistics: {total_attempts} attempts in {elapsed_time:.2f}s ({pps:.2f} p/s)")
     return None
 
 if __name__ == "__main__":

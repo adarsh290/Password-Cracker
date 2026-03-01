@@ -5,6 +5,7 @@ import string
 import os
 
 from hashing_utils import hash_md5, hash_sha256, hash_bcrypt
+from cracker import crack_password_hybrid
 import pdf_cracker # Add this import
 
 def run_bcrypt_test_scenario(target_hash_val, wordlist_path_val):

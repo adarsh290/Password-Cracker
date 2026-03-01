@@ -67,12 +67,12 @@ This command runs a pre-configured test to demonstrate Bcrypt cracking without n
 
 The speed of the cracking process is highly dependent on several factors:
 
+*   **Multi-Core Processing:** The tool now utilizes **multi-core processing** for all brute-force attacks (PDF, MD5, SHA-256, and Bcrypt). It automatically detects the number of CPU cores on your system and distributes the workload across them. This provides a significant speedup (e.g., a 4-core CPU will be nearly 4x faster than the original single-core version).
 *   **Hashing Algorithm:**
-    *   **MD5 and SHA-256:** These are cryptographic hash functions designed for speed. Attacks against these will be relatively fast, allowing for many attempts per second, especially for shorter passwords or smaller wordlists.
-    *   **Bcrypt:** This algorithm is *intentionally designed to be slow* and computationally intensive (using a "work factor"). This is a security feature, making brute-force and dictionary attacks significantly slower and more resource-consuming. Attempting to crack a Bcrypt hash will take considerably longer than MD5 or SHA-256, even for very short passwords.
-*   **Password Complexity:** Longer passwords, and those using a wider range of characters (e.g., `all` charset for brute-force), drastically increase the time required for brute-force attacks.
-*   **Wordlist Size:** For dictionary attacks, speed is directly proportional to the size of the wordlist.
-*   **System Resources:** The CPU power of the machine running the tool directly impacts how many hashes can be computed per second.
+    *   **MD5 and SHA-256:** These are cryptographic hash functions designed for speed. Attacks against these will be extremely fast, allowing for thousands of attempts per second.
+    *   **Bcrypt and PDF:** These are **intentionally designed to be slow**. Bcrypt uses a "work factor" and PDFs often use multiple rounds of hashing and encryption. Even with multi-core processing, cracking these will take considerably longer than MD5 or SHA-256.
+*   **Password Complexity:** Longer passwords and wider character sets (e.g., `all`) exponentially increase the time required for brute-force.
+*   **System Resources:** The total number of CPU cores and their individual clock speeds directly impact the number of passwords per second (p/s) the tool can test.
 
 In summary, for MD5/SHA-256, it can be quite fast for simple cases. For Bcrypt, it will be much slower due to its design, which is a key educational takeaway about modern password security.
 
