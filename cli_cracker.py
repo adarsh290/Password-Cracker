@@ -34,6 +34,8 @@ def run_bcrypt_test_scenario(target_hash_val, wordlist_path_val):
 
 def main():
     parser = argparse.ArgumentParser(description="Password Cracking Tool for Educational Purposes")
+    # Added GPU support flag
+    parser.add_argument("--use_gpu", action="store_true", help="Enable GPU‑accelerated cracking via hashcat when possible (only MD5/SHA‑256).")
 
     # Arguments for target hash
     parser.add_argument("target_hash", nargs='?', default=None, help="The hash to crack.")
@@ -71,6 +73,33 @@ def main():
                         help="Maximum length for PDF brute-force attack.")
 
     args = parser.parse_args()
+
+    # If GPU acceleration is requested, attempt to use hashcat for supported hashes.
+    if getattr(args, "use_gpu", False):
+        try:
+            from gpu_cracker import gpu_dictionary_crack, gpu_bruteforce_crack
+            gpu_result = None
+            if args.wordlist:
+                # Dictionary attack path
+                gpu_result = gpu_dictionary_crack(args.target_hash, args.hash_type, args.wordlist)
+            else:
+                # Brute‑force attack path – translate charset to hashcat mask inside the helper.
+                gpu_result = gpu_bruteforce_crack(
+                    args.target_hash,
+                    args.hash_type,
+                    args.charset,
+                    args.min_length,
+                    args.max_length,
+                )
+            if gpu_result:
+                print(f"\nPassword cracked! Found: '{gpu_result}' (GPU)")
+                return
+            else:
+                print("\nGPU cracking did not find the password.")
+                # Fall back to the regular CPU path below.
+        except Exception as e:
+            print(f"GPU cracking unavailable or failed ({e}); using CPU implementation.")
+
 
     # Handle hash generation request
     if args.generate_hash:
